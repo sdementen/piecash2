@@ -32,11 +32,12 @@ def read_requirements(path):
 setup(
     name="piecash2",
     version=read("piecash2", "VERSION"),
-    description="Awesome piecash2 created by sdementen",
+    description="piecash2, a python library to work with [GnuCash](https://www.gnucash.org/) books",
     url="https://github.com/sdementen/piecash2/",
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     author="sdementen",
+    maturity="Development Status :: 3 - Alpha",
     packages=find_packages(exclude=["tests", ".github"]),
     install_requires=read_requirements("requirements.txt"),
     entry_points={
