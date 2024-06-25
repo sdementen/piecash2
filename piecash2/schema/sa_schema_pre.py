@@ -153,7 +153,10 @@ class DeclarativeMeta(DeclarativeMeta_):
 
                         # detect which type of class is the object related to the obj_guid
                         qry_object_type_attr = union_all(
-                            *(select(text(f"'{name.lower()}'")).where(kls.guid == self.obj_guid) for name, kls in name2kls.items()),
+                            *(
+                                select(text(f"'{name.lower()}'")).where(kls.guid == self.obj_guid)
+                                for name, kls in name2kls.items()  # noqa: F821
+                            ),
                         ).limit(1)
                         object_type_attr = session.execute(qry_object_type_attr).scalar()
 
@@ -161,11 +164,11 @@ class DeclarativeMeta(DeclarativeMeta_):
                         return getattr(self, f"object_val_{object_type_attr}")
 
                     def object_comparator(cls):
-                        return GuidComparator(getattr(cls, f"obj_guid"))
+                        return GuidComparator(cls.obj_guid)
 
                     def object_setter(self, object):
                         object_old = self.object
-                        setattr(self, f"obj_guid", object.guid)
+                        self.obj_guid = object.guid
                         # expire the relationships related to the attr
                         session = Session.object_session(self)
                         session.expire(self, attrs_to_expire)  # expire link Slot -> Object
