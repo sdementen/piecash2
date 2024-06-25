@@ -1,4 +1,3 @@
-from collections import defaultdict
 from decimal import Decimal
 from enum import Enum
 from fractions import Fraction
@@ -11,7 +10,6 @@ from sqlalchemy.ext.hybrid import Comparator, hybrid_property
 from sqlalchemy.orm import DeclarativeMeta as DeclarativeMeta_, Session
 
 from piecash2 import utils
-
 
 # todo: reduce the list to classes which can really contains slots/recurrences to speed up detection of object class
 klswithguid_names = [
@@ -51,23 +49,6 @@ class SlotValueType(Enum):
     GLIST = 8
     FRAME = 9
     GDATE = 10
-
-
-class DecimalNumDenom(object):
-    def __init__(self, num, denom):
-        self.num = num
-        self.denom = denom
-
-    @classmethod
-    def from_db(cls, num, denom):
-        return DecimalNumDenom(num, denom)
-
-    @classmethod
-    def from_dt(cls, d: Decimal):
-        return DecimalNumDenom(d, d)
-
-    def __composite_values__(self):
-        return (self.dt, self.tz)
 
 
 class OwnerType(Enum):
@@ -110,7 +91,6 @@ class GuidComparator(Comparator):
 
 
 class DeclarativeMeta(DeclarativeMeta_):
-    backrefs_already_used = defaultdict(set)
     use_decimal = False
 
     def __new__(cls, name, bases, attrs):

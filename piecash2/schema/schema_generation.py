@@ -1,4 +1,5 @@
 """Generate and import the SA schema from a gnucash sqlite file."""
+
 import importlib.util
 import sqlite3
 import sys
@@ -18,9 +19,9 @@ path_schemas.mkdir(exist_ok=True, parents=True)
 def import_module_from_path(path: Path):
     module_name = path.stem
     spec = importlib.util.spec_from_file_location(module_name, path)
-    module = importlib.util.module_from_spec(spec)
+    module = importlib.util.module_from_spec(spec)  # type: ignore[arg-type]
     sys.modules[module_name] = module
-    spec.loader.exec_module(module)
+    spec.loader.exec_module(module)  # type: ignore[union-attr]
     return module
 
 
@@ -50,7 +51,10 @@ def generate_schema(db, schema_file: Path):
 
     # insert before/after the generated schema the common schema
     schema_file_text = (
-        (code_templates / "sa_schema_pre.py").read_text() + schema_file.read_text() + (code_templates / "sa_schema_post.py").read_text()
+        (code_templates / "sa_schema_pre.py").read_text()
+        + schema_file.read_text()
+        + (code_templates / "sa_schema_post.py").read_text()
+        + ""
     )
 
     schema_file.write_text(schema_file_text)
