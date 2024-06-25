@@ -12,7 +12,6 @@ from sqlalchemy.orm import DeclarativeMeta as DeclarativeMeta_, Session
 
 from piecash2 import utils
 
-odict = dict
 
 # todo: reduce the list to classes which can really contains slots/recurrences to speed up detection of object class
 klswithguid_names = [
@@ -70,9 +69,6 @@ class DecimalNumDenom(object):
     def __composite_values__(self):
         return (self.dt, self.tz)
 
-    def value(self):
-        return datetime.datetime(self.dt, self.tz)
-
 
 class OwnerType(Enum):
     """Enum to define the type of owner"""
@@ -83,9 +79,6 @@ class OwnerType(Enum):
     JOB = 3
     VENDOR = 4
     EMPLOYEE = 5
-
-    def cls_name(self):
-        return self.name.lower().capitalize()
 
     @classmethod
     def from_cls(cls, obj):
@@ -120,7 +113,7 @@ class DeclarativeMeta(DeclarativeMeta_):
     backrefs_already_used = defaultdict(set)
     use_decimal = False
 
-    def __new__(cls, name, bases, dict):
+    def __new__(cls, name, bases, attrs):
         """
         The different objects use different naming conventions:
         - tablename = underscore plural
@@ -128,32 +121,30 @@ class DeclarativeMeta(DeclarativeMeta_):
         - fields = underscore singular
         """
 
-        tablename = dict.get("__tablename__")
+        tablename = attrs.get("__tablename__")
 
         if tablename:
-            assert tablename == utils.underscore(
-                utils.pluralize(name)
-            ), f"{tablename} <> {utils.underscore(utils.pluralize(name))}"
+            assert tablename == utils.underscore(utils.pluralize(name)), f"{tablename} <> {utils.underscore(utils.pluralize(name))}"
 
-            self_id = dict.get("guid", dict.get("id"))
+            self_id = attrs.get("guid", attrs.get("id"))
 
-            for k, v in list(dict.items()):
+            for k, v in list(attrs.items()):
                 if name == "Slot" and k == "obj_guid":
                     # replace name of column obj_guid to guid
-                    dict["guid"] = sqlalchemy.orm.synonym("guid_val")
+                    attrs["guid"] = sqlalchemy.orm.synonym("guid_val")
 
                 elif name in {"Slot", "Recurrence"} and k == "guid_val":
                     attrs_to_expire = []
                     # define the n relationships related to guid
                     for kls_other in klswithguid_names:
-                        kwargs = odict(
+                        kwargs = dict(
                             argument=kls_other,
                             backref="slots",
                             primaryjoin=f"foreign({name}.obj_guid) == remote({kls_other}.guid)",
                             viewonly=True,
                         )
                         attr_name = f"object_val_{kls_other.lower()}"
-                        dict[attr_name] = sqlalchemy.orm.relationship(**kwargs)
+                        attrs[attr_name] = sqlalchemy.orm.relationship(**kwargs)
                         attrs_to_expire.append(attr_name)
 
                     # define the object property
@@ -181,8 +172,8 @@ class DeclarativeMeta(DeclarativeMeta_):
                         session.expire(object_old, ["slots"])  # expire backrefs on old object
                         session.expire(object, ["slots"])  # expire backrefs on new object
 
-                    dict["object"] = object_getter
-                    dict["object"] = hybrid_property(object_getter).setter(object_setter).comparator(object_comparator)
+                    attrs["object"] = object_getter
+                    attrs["object"] = hybrid_property(object_getter).setter(object_setter).comparator(object_comparator)
 
                 elif name == "Slot" and k == "slot_type":
                     # handle slot_type as enum via slot_type_enum
@@ -200,20 +191,20 @@ class DeclarativeMeta(DeclarativeMeta_):
                     def expression(cls):
                         return cls.slot_type
 
-                    dict["slot_type_enum"] = getter
+                    attrs["slot_type_enum"] = getter
 
                 # handle fractions/decimals as numerators/denominators
-                elif k.endswith("_denom") and k[:-6] + "_num" in dict:
+                elif k.endswith("_denom") and k[:-6] + "_num" in attrs:
                     fraction_base = k[:-6]
                     if cls.use_decimal:
-                        dict[f"{fraction_base}"] = hybrid_property(
+                        attrs[f"{fraction_base}"] = hybrid_property(
                             lambda self: Decimal(getattr(self, fraction_base + "_num")) / Decimal(getattr(self, fraction_base + "_denom"))
                         ).setter(
                             lambda self, value: setattr(self, fraction_base + "_num", (ratio := value.as_integer_ratio())[0])
                             or setattr(self, fraction_base + "_denom", ratio[1])
                         )
                     else:
-                        dict[f"{fraction_base}"] = hybrid_property(
+                        attrs[f"{fraction_base}"] = hybrid_property(
                             lambda self: Fraction(getattr(self, fraction_base + "_num"), getattr(self, fraction_base + "_denom"))
                         ).setter(
                             lambda self, value: setattr(self, fraction_base + "_num", value.numerator)
@@ -221,7 +212,7 @@ class DeclarativeMeta(DeclarativeMeta_):
                         )
 
                 # handle owner/billto _guid/_type combo
-                elif k.endswith("_guid") and k[:-5] + "_type" in dict:
+                elif k.endswith("_guid") and k[:-5] + "_type" in attrs:
                     # define the n relationships related to OwnerTypes
                     # and the appropriate python getter/setter and SQL comparator
                     attr = k[:-5]
@@ -231,14 +222,14 @@ class DeclarativeMeta(DeclarativeMeta_):
                         if typ in {OwnerType.NONE, OwnerType.UNDEFINED}:
                             continue
                         kls_other = typ.cls_name
-                        kwargs = odict(
+                        kwargs = dict(
                             argument=kls_other,
                             backref=None,
                             primaryjoin=f"(foreign({name}.{attr}_guid) == remote({kls_other}.guid)) "
                             f"& ({name}.{attr}_type == {typ.value})",
                             viewonly=True,
                         )
-                        dict[f"{attr}_{typ.attr_name}"] = sqlalchemy.orm.relationship(**kwargs)
+                        attrs[f"{attr}_{typ.attr_name}"] = sqlalchemy.orm.relationship(**kwargs)
 
                     def attr_getter(self, attr=attr):
                         typ = OwnerType(getattr(self, f"{attr}_type") or 0)
@@ -260,7 +251,7 @@ class DeclarativeMeta(DeclarativeMeta_):
                         # expire the relationships related to the attr
                         Session.object_session(self).expire(self, attrs_to_expire)
 
-                    dict[f"{attr}"] = hybrid_property(attr_getter).setter(attr_setter).comparator(attr_comparator)
+                    attrs[f"{attr}"] = hybrid_property(attr_getter).setter(attr_setter).comparator(attr_comparator)
 
                 # create relationships through xxx_guid
                 elif k.endswith("_guid"):
@@ -287,35 +278,34 @@ class DeclarativeMeta(DeclarativeMeta_):
 
                     if obj_name == "ccard":  # credit car account
                         kls_other = "Account"
-                    if f"{obj_name}_type" in dict:  # x_guid to be used with x_type in Entries/Invoicing/...
+                    if f"{obj_name}_type" in attrs:  # x_guid to be used with x_type in Entries/Invoicing/...
                         print(tablename, obj_name)
                         for kls_other in cls.classes_with_guid:
                             kls_other = kls_other.__name__
-                            kwargs = odict(
+                            kwargs = dict(
                                 argument=kls_other,
                                 backref=None,
                                 primaryjoin=f"foreign({kls_self}.{k}) == {kls_other}.guid",
                                 viewonly=True,
                             )
-                            dict[f"{obj_name}_{kls_other}"] = sqlalchemy.orm.relationship(**kwargs)
+                            attrs[f"{obj_name}_{kls_other}"] = sqlalchemy.orm.relationship(**kwargs)
 
                         continue
                     if obj_name == "obj" and kls_self in {"Recurrence", "Slot"}:
                         # done via ObjGUIDMixin
                         continue
 
-                    kwargs = odict(
+                    kwargs = dict(
                         argument=kls_other,
                         backref=backref,
                         primaryjoin=f"foreign({kls_self}.{k}) == {kls_other}.guid",
                     )
 
-                    dict[obj_name] = sqlalchemy.orm.relationship(**kwargs)
+                    attrs[obj_name] = sqlalchemy.orm.relationship(**kwargs)
 
-        self = super().__new__(cls, name, bases, dict)
+        self = super().__new__(cls, name, bases, attrs)
 
         return self
-
 
 
 class Base:
@@ -340,6 +330,7 @@ class Base:
     def id(self):
         """Property to return the id if no Column with id already exists"""
         return self.guid
+
 
 @lru_cache
 def declarative_base(*args, **kwargs):

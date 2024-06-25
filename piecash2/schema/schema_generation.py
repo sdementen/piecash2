@@ -78,9 +78,6 @@ def open_book(book, regenerate_schema=False):
 
     book_posix = book.as_posix()
 
-    # connect to the local sqlite extract of GECO
-    sqlite_connection_string = f"sqlite:///{book_posix}"
-
     # make a backup of the DB in memory
     db_memory_name = f":memgeco_{abs(hash(book_posix))}:"
     with sqlite3.connect(book_posix) as source:
