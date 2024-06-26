@@ -7,7 +7,8 @@ import sqlalchemy
 from sqlalchemy import select, text, union_all
 from sqlalchemy.ext.declarative import declarative_base as declarative_base_
 from sqlalchemy.ext.hybrid import Comparator, hybrid_property
-from sqlalchemy.orm import DeclarativeMeta as DeclarativeMeta_, Session
+from sqlalchemy.orm import DeclarativeMeta as DeclarativeMeta_
+from sqlalchemy.orm import Session
 
 from piecash2 import utils
 
@@ -299,7 +300,14 @@ class Base:
         return isinstance(other, self.__class__) and ((self.__class__.__name__, self.id)) == ((other.__class__.__name__, other.id))
 
     def __repr__(self):
-        return f"{self.__class__.__name__}<{self.name if hasattr(self, 'name') else ''}>[{self.uid}]"
+        return f"{self.__class__.__name__}<{self._human_id()}>[{self.uid}]"
+
+    def _human_id(self):
+        if hasattr(self, "name"):
+            return self.name
+        elif hasattr(self, "table_version"):
+            return self.table_version
+        return ""
 
     @property
     def uid(self):
@@ -312,7 +320,10 @@ class Base:
     @property
     def id(self):
         """Property to return the id if no Column with id already exists"""
-        return self.guid
+        try:
+            return self.guid
+        except AttributeError:
+            return self.table_name
 
 
 @lru_cache
