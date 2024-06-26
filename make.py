@@ -94,6 +94,8 @@ def schema():
     import piecash2.schema.generated as generated
 
     schema_generation.path_schemas = Path(generated.__file__).parent
+
+    print(f"Generating schemas in {schema_generation.path_schemas}")
     for book in (HERE / "data").glob("*.gnucash"):
         schema_generation.generate_schema(book, schema_generation.get_schema_name(book))
 
