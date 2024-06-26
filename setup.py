@@ -1,4 +1,3 @@
-"""Python setup.py for piecash2 package"""
 import io
 import os
 from setuptools import find_packages, setup
@@ -22,25 +21,20 @@ def read(*paths, **kwargs):
 
 
 def read_requirements(path):
-    return [
-        line.strip()
-        for line in read(path).split("\n")
-        if not line.startswith(('"', "#", "-", "git+"))
-    ]
+    return [line.strip() for line in read(path).split("\n") if not line.startswith(('"', "#", "-", "git+"))]
 
 
 setup(
     name="piecash2",
     version=read("piecash2", "VERSION"),
-    description="Awesome piecash2 created by sdementen",
+    description="piecash2, a python library to work with [GnuCash](https://www.gnucash.org/) books",
     url="https://github.com/sdementen/piecash2/",
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
     author="sdementen",
+    maturity="Development Status :: 3 - Alpha",
     packages=find_packages(exclude=["tests", ".github"]),
     install_requires=read_requirements("requirements.txt"),
-    entry_points={
-        "console_scripts": ["piecash2 = piecash2.__main__:main"]
-    },
+    entry_points={"console_scripts": ["piecash2 = piecash2.__main__:main"]},
     extras_require={"test": read_requirements("requirements-test.txt")},
 )

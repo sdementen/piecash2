@@ -1,5 +1,9 @@
 import sys
+from pathlib import Path
+
 import pytest
+
+HERE = Path(__file__).parent
 
 
 # each test runs on cwd to its temp dir
@@ -12,3 +16,20 @@ def go_to_tmpdir(request):
     # Chdir only for the duration of the test.
     with tmpdir.as_cwd():
         yield
+
+
+@pytest.fixture(autouse=True)
+def change_schema_path(request):
+    import piecash2.schema.generation.schema_generation as schema_generation
+
+    # schema_generation.path_schemas = Path(request.getfixturevalue("tmpdir")) / "schemas"
+    # schema_generation.path_schemas.mkdir(exist_ok=True, parents=True)
+
+    import piecash2.schema.generated as generated
+
+    schema_generation.path_schemas = Path(generated.__file__).parent
+
+    for book in (HERE.parent / "data").glob("*.gnucash"):
+        schema_generation.generate_schema(book, schema_generation.get_schema_name(book))
+
+    yield
