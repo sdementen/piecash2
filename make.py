@@ -16,13 +16,14 @@ def release(tag: str):
     print(f"WARNING: This operation will create version {tag=} and push to github")
     typer.confirm("Do you want to continue?", abort=True)
     Path("piecash2/VERSION").write_text(tag)
+    print(f"creating git tag : {tag}")
+    os.system(f"git tag {tag}")
     os.system("gitchangelog > HISTORY.md")
     os.startfile("HISTORY.md")
     typer.confirm("Did you update the changelog?", abort=True)
     os.system("git add piecash2/VERSION HISTORY.md")
     os.system(f'git commit -m "release: version {tag}')
-    print(f"creating git tag : {tag}")
-    os.system(f"git tag {tag}")
+
     os.system("git push -u origin HEAD --tags")
     print("Github Actions will detect the new tag and release the new version.")
 
