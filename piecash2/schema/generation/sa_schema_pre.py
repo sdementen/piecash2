@@ -7,8 +7,7 @@ import sqlalchemy
 from sqlalchemy import select, text, union_all
 from sqlalchemy.ext.declarative import declarative_base as declarative_base_
 from sqlalchemy.ext.hybrid import Comparator, hybrid_property
-from sqlalchemy.orm import DeclarativeMeta as DeclarativeMeta_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import DeclarativeMeta as DeclarativeMeta_, Session
 
 from piecash2 import utils
 
@@ -292,7 +291,7 @@ class DeclarativeMeta(DeclarativeMeta_):
         return self
 
 
-class Base:
+class DeclarativeBase:
     def __hash__(self):
         return hash((self.__class__.__name__, self.id))
 
@@ -328,5 +327,5 @@ class Base:
 
 @lru_cache
 def declarative_base(*args, **kwargs):
-    base = declarative_base_(*args, **kwargs, metaclass=DeclarativeMeta, cls=Base)
+    base = declarative_base_(*args, **kwargs, metaclass=DeclarativeMeta, cls=DeclarativeBase)
     return base
