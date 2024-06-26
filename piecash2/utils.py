@@ -11,7 +11,7 @@ def camelize(string, uppercase_first_letter=True):
     Convert strings to CamelCase.
     """
     if uppercase_first_letter:
-        return re.sub(r"(?:^|_)(.)", lambda m: m.group(1).upper(), string)
+        return re.sub(r"(?:^|_|-)(.)", lambda m: m.group(1).upper(), string)
     else:
         return string[0].lower() + camelize(string)[1:]
 
